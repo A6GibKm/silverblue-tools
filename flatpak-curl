@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+__license__ = 'MIT'
+
+import argparse
+import json
+import hashlib
+import os
+import shutil
+import tempfile
+import urllib.request
+
+from collections import OrderedDict
+
+
+def download(url: str, tempdir: str) -> str:
+    with urllib.request.urlopen(url) as response:
+        file_path = os.path.join(tempdir, url.split('/')[-1])
+        with open(file_path, 'x+b') as tar_file:
+            shutil.copyfileobj(response, tar_file)
+    return file_path
+
+
+def get_file_hash(filename: str) -> str:
+    sha = hashlib.sha256()
+    with open(filename, 'rb') as f:
+        while True:
+            data = f.read(1024 * 1024 * 32)
+            if not data:
+                break
+            sha.update(data)
+        return sha.hexdigest()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('url')
+    opts = parser.parse_args()
+    url = opts.url
+
+    filename = url.split('/')[-1]
+
+    name, extension = os.path.splitext(filename)
+    name = name.replace('.tar', '')
+
+    prefix = 'flatpak-curl-generator'
+    with tempfile.TemporaryDirectory(prefix=prefix) as tempdir:
+        filename = download(url, tempdir)
+        sha256 = get_file_hash(filename)
+        if extension in ['.gz', '.zip', '.xz', '.bz2']:
+            file_type = 'archive'
+        else:
+            file_type = 'file'
+    source = OrderedDict(
+        [('type', file_type), ('url', url), ('sha256', sha256)]
+    )
+    module = OrderedDict(
+        [
+            ('name', name),
+            ('buildsystem', 'simple'),
+            ('build-commands', []),
+            ('sources', [source]),
+        ]
+    )
+    print(json.dumps(module, indent=4))
+
+
+if __name__ == '__main__':
+    main()

@@ -13,7 +13,7 @@ pip install -r requirements.txt
 
 Export application metadata outside of a toolbox container.
 
-### Usage
+#### Usage
 
 ``` sh
 $ toolbox-export foo
@@ -40,7 +40,7 @@ Categories=Foo;Bar
 
 Quickly generate modules for your flatpak manifest.
 
-### Usage
+#### Usage
 
 ``` sh
 $ flatpak-curl https://domain.org/foo-version.tar.gz
@@ -64,7 +64,7 @@ $ flatpak-curl https://domain.org/foo-version.tar.gz
 
 Quickly create alias to flatpak and toolbox applications.
 
-### Usage
+#### Usage
 
 ``` sh
 $ flatpak-alias gcc --command=gcc org.freedesktop.Sdk
@@ -88,6 +88,18 @@ Jul 3 7402ccb7488428235c332ce1eaf94d836737bdeccf57b98fa2757d53b1f87985
 Jul 5 7402ccb7488428235c332ce1eaf94d836737bdeccf57b98fa2757d53b1f87985
 Jul 11 6e670d9a4cb48d15c8e2a8ab64246a5051148981da417b970e15b57290c34d82
 ```
-To deploy: `$ rpm-ostree deploy COMMIT`
+To deploy: `$ rpm-ostree deploy COMMIT`, to compare `rpm-ostree db diff COMMIT`.
 
-## TODO 
+## TODO ostree-copr
+
+Enable copr repos in silverblue. Requires root permissions.
+
+#### Usage
+
+``` sh
+ostree-copr enable user/repository
+```
+
+``` sh
+ostree-copr disable user/repository
+```

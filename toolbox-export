@@ -69,33 +69,33 @@ def install(new_data: bytes, path: str, resource: str):
 
 
 def handle_pixmaps(pixmap: str, size: int):
-    img = Image.open(pixmap)
-    if size == 'scalable':
-        resource = 'icons/hicolor/scalable/apps'
-    else:
-        resource = 'icons/hicolor/{}x{}/apps'.format(size, size)
-    pixmap_size = img.size[0]
-    ext = os.path.splitext(pixmap)[1]
-    new_ext = '.png' if type(size) is int else '.svg'
-    pillow_ext = new_ext.replace('.', '').upper()
-    icon_name = pixmap.split('/')[-1].replace(ext, new_ext)
-    new_icon_path = os.path.join(
-        BaseDirectory.save_data_path(resource), icon_name
-    )
-    if size == 'scalable':
-        if ext == '.svg':
-            img = img.resize((size, size))
+    with Image.open(pixmap) as img:
+        if size == 'scalable':
+            resource = 'icons/hicolor/scalable/apps'
+        else:
+            resource = 'icons/hicolor/{}x{}/apps'.format(size, size)
+        pixmap_size = img.size[0]
+        ext = os.path.splitext(pixmap)[1]
+        new_ext = '.png' if type(size) is int else '.svg'
+        pillow_ext = new_ext.replace('.', '').upper()
+        icon_name = pixmap.split('/')[-1].replace(ext, new_ext)
+        new_icon_path = os.path.join(
+            BaseDirectory.save_data_path(resource), icon_name
+        )
+        if size == 'scalable':
+            if ext == '.svg':
+                img = img.resize((size, size))
+            else:
+                return
+        elif pixmap_size % size == 0:
+            if pixmap_size != size:
+                img = img.resize((size, size))
         else:
             return
-    elif pixmap_size % size == 0:
-        if pixmap_size != size:
-            img = img.resize((size, size))
-    else:
-        return
 
-    with tempfile.NamedTemporaryFile() as tmp_f:
-        img.save(tmp_f.name, pillow_ext)
-        install(tmp_f, new_icon_path, resource)
+        with tempfile.NamedTemporaryFile() as tmp_f:
+            img.save(tmp_f.name, pillow_ext)
+            install(tmp_f.read(), new_icon_path, resource)
 
 
 def copy_icon(app: str, size):
@@ -145,7 +145,7 @@ def copy_mime(app: str):
         )
         try:
             with open(file_path, 'br') as f:
-                install(f, new_file, resource)
+                install(f.read(), new_file, resource)
         except FileNotFoundError:
             pass
 

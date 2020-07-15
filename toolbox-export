@@ -8,6 +8,7 @@ import os
 import argparse
 import shutil
 import subprocess
+from xdg.Exceptions import ParsingError
 
 try:
     from PIL import Image
@@ -27,11 +28,16 @@ installed_paths = []
 def already_installed(new_file, resource: str) -> bool:
     new_data = new_file.read()
 
-    for x in BaseDirectory.load_data_paths(resource):
-        if '/usr/' not in x:
+    paths = filter(
+        lambda d: ~d.startswith('/usr'),
+        xdg.BaseDirectory.load_data_paths(resource),
+    )
+
+    for path in paths:
+        for f in os.listdir(path):
             try:
-                with open(x) as f:
-                    old_data = f.read()
+                with open(f) as data:
+                    old_data = data.read()
             except:
                 continue
             if old_data == new_data:
@@ -49,22 +55,13 @@ def install(new_file, path: str, resource: str):
     message_n = 'Already installed: {}'.format(r(path))
     message_y = 'Installed: {}'.format(r(path))
 
-    if path in installed_paths:
-        print(message_n) # FIXME
-        return
-    try:
-        with open(path, 'rb') as f:
-            if f.read() == new_data:
-                print(message_n)
-                installed_paths.append(path)
-                return
-
-    except FileNotFoundError:
-        pass
     if already_installed(new_file, resource):
         print(message_n)
         installed_paths.append(path)
         return
+    elif path in installed_paths:
+        return
+
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'wb') as f:
         f.write(new_data)
@@ -102,108 +99,125 @@ def handle_pixmaps(pixmap: str, size: int):
         install(tmp_f, new_icon_path, resource)
 
 
-def copy_icons(app: str):
-    sizes = [16, 24, 32, 48, 64, 96, 128, 256, 512, 'scalable']
-    for size in sizes:
-        if type(size) is int:
-            icon_path = xdg.IconTheme.getIconPath(app, size=size)
-        else:
-            icon_path = xdg.IconTheme.getIconPath(app, extensions=['svg'])
+def copy_icon(app: str, size):
+    # TODO look both in /usr/ and /usr/local
+    # paths =
+    if type(size) is int:
+        icon_path = xdg.IconTheme.getIconPath(app, size=size)
+    else:
+        icon_path = xdg.IconTheme.getIconPath(app, extensions=['svg'])
 
-        if icon_path is None:
-            continue
-        elif '/pixmaps/' in icon_path:
-            handle_pixmaps(icon_path, size)
-            continue
+    if icon_path is None:
+        return
+    elif '/pixmaps/' in icon_path:
+        handle_pixmaps(icon_path, size)
+        return
 
-        icon_file_name = os.path.basename(icon_path)
-        if '/usr' in icon_path:
-            resource = icon_path.replace('/usr/share/', '')
-        elif BaseDirectory.save_data_path('') in icon_path:
-            resource = icon_path.replace(BaseDirectory.save_data_path(''), '')
-        resource = resource.replace(icon_file_name, '')
-        new_icon_path = os.path.join(
-            BaseDirectory.save_data_path(resource), icon_file_name
-        )
+    icon_file_name = os.path.basename(icon_path)
+    if '/usr' in icon_path:
+        resource = icon_path.replace('/usr/share/', '')
+    elif BaseDirectory.save_data_path('') in icon_path:
+        resource = icon_path.replace(BaseDirectory.save_data_path(''), '')
+    resource = resource.replace(icon_file_name, '')
+    new_icon_path = os.path.join(
+        BaseDirectory.save_data_path(resource), icon_file_name
+    )
 
-        try:
-            with open(icon_path, 'br') as icon:
-                install(icon, new_icon_path, resource)
-        except FileNotFoundError:
-            pass
+    try:
+        with open(icon_path, 'br') as icon:
+            install(icon, new_icon_path, resource)
+    except FileNotFoundError:
+        pass
 
 
 # Taken from https://github.com/takluyver/pyxdg/blob/master/xdg/Mime.py
 def copy_mime(app: str):
-    application = app + '.xml'
-    package_file = os.path.join('/usr/share', 'mime', 'packages', application)
     resource = os.path.join('mime', 'packages')
-    new_file = os.path.join(
-        BaseDirectory.save_data_path(resource), application
+    paths = filter(
+        lambda d: d.startswith('/usr'),
+        xdg.BaseDirectory.load_data_paths(resource),
     )
-    try:
-        with open(package_file, 'br') as f:
-            install(f, new_file, resource)
-    except FileNotFoundError:
-        pass
-
-    # Update the database...
-    command = 'update-mime-database'
-    if os.spawnlp(
-        os.P_WAIT, command, command, BaseDirectory.save_data_path('mime')
-    ):
-        os.unlink(new_file)
-        raise Exception(
-            "The '%s' command returned an error code!\n"
-            "Make sure you have the freedesktop.org shared MIME package:\n"
-            "http://standards.freedesktop.org/shared-mime-info/" % command
+    application = app + '.xml'
+    for path in paths:
+        file_path = os.path.join(path, application)
+        new_file = os.path.join(
+            BaseDirectory.save_data_path(resource), application
         )
+        try:
+            with open(file_path, 'br') as f:
+                install(f, new_file, resource)
+        except FileNotFoundError:
+            pass
+
+        # Update the database...
+        command = 'update-mime-database'
+        if os.spawnlp(
+            os.P_WAIT, command, command, BaseDirectory.save_data_path('mime')
+        ):
+            os.unlink(new_file)
+            raise Exception(
+                "The '%s' command returned an error code!\n"
+                "Make sure you have the freedesktop.org shared MIME package:\n"
+                "http://standards.freedesktop.org/shared-mime-info/" % command
+            )
 
 
 def copy_desktop_file(app: str):
-    application = app + '.desktop'
     resource = 'applications'
-    app_path = os.path.join('/usr/share/', resource, application)
-    if not os.path.exists(app_path):
-        return
-    desktop_file = DesktopEntry(app_path)
-
-    for entry in desktop_file.content:
-        if 'Exec' in desktop_file.content[entry]:
-            exec_field = desktop_file.content[entry]['Exec']
-            desktop_file.content[entry]['Exec'] = 'toolbox run ' + exec_field
-        if 'TryExec' in desktop_file.content[entry]:
-            exec_field = desktop_file.content[entry]['TryExec']
-            desktop_file.content[entry]['TryExec'] = 'toolbox'
-
-    new_path = os.path.join(
-        BaseDirectory.save_data_path(resource), application
+    paths = filter(
+        lambda d: d.startswith('/usr'),
+        xdg.BaseDirectory.load_data_paths(resource),
     )
+    application = app + '.desktop'
+    for path in paths:
+        file_path = os.path.join(path, application)
+        try:
+            desktop_file = DesktopEntry(file_path)
+        except ParsingError as e:
+            continue
 
-    with tempfile.NamedTemporaryFile() as tmp_f:
-        desktop_file.write(tmp_f.name)
-        install(tmp_f, new_path, resource)
-    # TODO check if this does anything
-    command = [
-        'update-desktop-database',
-        BaseDirectory.save_data_path(resource),
-    ]
-    try:
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
-    except subprocess.CalledProcessError:
-        print('Failed to run', ' '.join(command))
+        for entry in desktop_file.content:
+            if 'Exec' in desktop_file.content[entry]:
+                exec_field = desktop_file.content[entry]['Exec']
+                desktop_file.content[entry]['Exec'] = (
+                    'toolbox run ' + exec_field
+                )
+            if 'TryExec' in desktop_file.content[entry]:
+                exec_field = desktop_file.content[entry]['TryExec']
+                desktop_file.content[entry]['TryExec'] = 'toolbox'
+
+        new_path = os.path.join(
+            BaseDirectory.save_data_path(resource), application
+        )
+
+        with tempfile.NamedTemporaryFile() as tmp_f:
+            desktop_file.write(tmp_f.name)
+            install(tmp_f, new_path, resource)
+        # TODO check if this command does anything
+        command = [
+            'update-desktop-database',
+            BaseDirectory.save_data_path(resource),
+        ]
+        try:
+            subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            print('Failed to run', ' '.join(command))
 
 
 def get_icon_name(app: str) -> str:
     application = app + '.desktop'
-    app_path = os.path.join('/usr/share/applications', application)
-    desktop_file = DesktopEntry(app_path)
-    if 'Desktop Entry' not in desktop_file.content:
-        return
-    if 'Icon' in desktop_file.content['Desktop Entry']:
-        return desktop_file.content['Desktop Entry']['Icon']
-    else:
-        return app
+    resource = 'applications'
+
+    paths = filter(
+        lambda d: d.startswith('/usr'),
+        xdg.BaseDirectory.load_data_paths(resource),
+    )
+    for path in paths:
+        file_path = os.path.join(path, application)
+        if not os.path.exists(file_path): continue
+        desktop_file = DesktopEntry(file_path)
+        icon = desktop_file.getIcon()
+        return icon
 
 
 def copy_metadata(app: str):
@@ -223,6 +237,23 @@ def copy_metadata(app: str):
                 pass
 
 
+def list_desktop_files():
+    paths = filter(
+        lambda d: d.startswith('/usr'),
+        xdg.BaseDirectory.load_data_paths('applications'),
+    )
+    for desktop_dir in paths:
+        if desktop_dir.startswith('/usr'):
+            files = os.listdir(desktop_dir)
+            L = [
+                os.path.splitext(f)[0]
+                for f in os.listdir(desktop_dir)
+                if os.path.splitext(f)[1] == '.desktop'
+            ]
+            for l in L:
+                print(l)
+
+
 def main():
 
     # if not os.path.exists('/README.md'):
@@ -239,17 +270,18 @@ def main():
     opts = parser.parse_args()
 
     if opts.list:
-        for f in os.listdir('/usr/share/applications'):
-            print(f.replace('.desktop', ''))
+        list_desktop_files()
         exit()
 
     if not opts.application:
         exit('Specify an application. See --help for additional information')
 
+    sizes = [16, 24, 32, 48, 64, 96, 128, 256, 512, 'scalable']
     app = opts.application
     copy_desktop_file(app)
     app_icon = get_icon_name(app)
-    copy_icons(app_icon)
+    for size in sizes:
+        copy_icon(app_icon, size)
     copy_mime(app)
     copy_metadata(app)
 

@@ -38,7 +38,7 @@ def already_installed(new_data: bytes, resource: str) -> bool:
             try:
                 with open(f_path, 'br') as data:
                     old_data = data.read()
-            except:
+            except FileNotFoundError:
                 continue
             if old_data == new_data:
                 return True

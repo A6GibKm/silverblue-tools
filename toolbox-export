@@ -207,18 +207,20 @@ def get_icon_name(app: str) -> str:
 
 
 def copy_metadata(app: str):
-    for resource in ['appdata', 'metainfo']:
-        application = app + '.' + resource + '.xml'
-        xml_dir = os.path.join('/usr/share', resource)
-        metadata_path = os.path.join(xml_dir, application)
-        new_metadata_path = os.path.join(
-            BaseDirectory.save_data_path(resource), application
-        )
-        try:
-            with open(metadata_path, 'br') as f:
-                install(f, new_metadata_path, resource)
-        except FileNotFoundError:
-            pass
+    resource = 'metainfo'
+    for info_dir in ['appdata', 'metainfo']:
+        xml_dir = os.path.join('/usr/share', info_dir)
+        for app_ext in ['.appdata.xml', '.metainfo.xml']:
+            application = app + app_ext
+            metadata_path = os.path.join(xml_dir, application)
+            new_metadata_path = os.path.join(
+                BaseDirectory.save_data_path(resource), application
+            )
+            try:
+                with open(metadata_path, 'br') as f:
+                    install(f, new_metadata_path, resource)
+            except FileNotFoundError:
+                pass
 
 
 def main():

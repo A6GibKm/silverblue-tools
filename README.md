@@ -58,23 +58,26 @@ $ flatpak-curl https://domain.org/foo-version.tar.gz
 }
 ```
 
-# Future ideas
+## flatpak-alias
 
-## TODO flatpak-alias and toolbox-alias
-
-Quickly create alias to flatpak and toolbox applications.
+Quickly create alias for flatpak applications. Credits to
+[Barthalion](https://github.com/Barthalion) who presented this idea in
+[Shell aliases for Flatpak applications](https://barthalion.blog/shell-aliases-for-flatpak-applications/).
 
 #### Usage
 
 ``` sh
-$ flatpak-alias gcc --command=gcc org.freedesktop.Sdk
-Created alias gcc="flatpak run --command=gcc org.freedesktop.Sdk"
+$ flatpak-alias
+Add
+
+if [ -f "${XDG_CACHE_HOME}"/flatpak-aliases ] && ! [ "$HOSTNAME" == "toolbox" ] && [[ -z "${FLATPAK_ID}" ]]; then
+    . "${XDG_CACHE_HOME}"/flatpak-aliases
+fi
+
+to your ~/.bashrc file.
 ```
 
-``` sh
-$ toolbox-alias dnf
-Created alias bar="toolbox run dnf"
-```
+# Future ideas
 
 ## TODO ostree-history
 

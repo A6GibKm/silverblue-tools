@@ -3,21 +3,20 @@
 __license__ = 'MIT'
 
 import tempfile
-import io
 import os
 import argparse
-import shutil
 import subprocess
+import sys
+
 from xdg.Exceptions import ParsingError
 
 try:
     from PIL import Image
     from xdg.DesktopEntry import DesktopEntry
-    from xdg.BaseDirectory import xdg_data_home
     from xdg import BaseDirectory
     import xdg.IconTheme
 except ImportError:
-    exit(
+    sys.exit(
         'Could not find python dependencies, run "pip install -r requirements.txt"'
     )
 
@@ -28,7 +27,9 @@ installed_paths = []
 
 def already_installed(new_data: bytes, resource: str) -> bool:
     paths = filter(
-        lambda d: (not d.startswith('/usr') and not d.startswith('/var/lib/flatpak')),
+        lambda d: (
+            not d.startswith('/usr') and not d.startswith('/var/lib/flatpak')
+        ),
         xdg.BaseDirectory.load_data_paths(resource),
     )
 
@@ -76,7 +77,7 @@ def handle_pixmaps(pixmap: str, size: int):
             resource = 'icons/hicolor/{}x{}/apps'.format(size, size)
         pixmap_size = img.size[0]
         ext = os.path.splitext(pixmap)[1]
-        new_ext = '.png' if type(size) is int else '.svg'
+        new_ext = '.png' if isinstance(size, int) else '.svg'
         pillow_ext = new_ext.replace('.', '').upper()
         icon_name = pixmap.split('/')[-1].replace(ext, new_ext)
         new_icon_path = os.path.join(
@@ -99,7 +100,7 @@ def handle_pixmaps(pixmap: str, size: int):
 
 
 def copy_icon(app: str, size):
-    if type(size) is int:
+    if isinstance(size, int):
         icon_path = xdg.IconTheme.getIconPath(app, size=size)
     elif size == 'scalable':
         icon_path = xdg.IconTheme.getIconPath(app, extensions=['svg'])
@@ -215,7 +216,8 @@ def get_icon_name(app: str) -> str:
     )
     for path in paths:
         file_path = os.path.join(path, application)
-        if not os.path.exists(file_path): continue
+        if not os.path.exists(file_path):
+            continue
         desktop_file = DesktopEntry(file_path)
         icon = desktop_file.getIcon()
         return icon
@@ -246,7 +248,6 @@ def list_desktop_files():
     )
     for desktop_dir in paths:
         if desktop_dir.startswith('/usr'):
-            files = os.listdir(desktop_dir)
             L = [
                 os.path.splitext(f)[0]
                 for f in os.listdir(desktop_dir)
@@ -273,10 +274,12 @@ def main():
 
     if opts.list:
         list_desktop_files()
-        exit()
+        sys.exit()
 
     if not opts.application:
-        exit('Specify an application. See --help for additional information')
+        sys.exit(
+            'Specify an application. See --help for additional information'
+        )
 
     sizes = [16, 24, 32, 48, 64, 96, 128, 256, 512, 'scalable']
     app = opts.application

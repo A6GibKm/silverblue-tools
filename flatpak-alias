@@ -2,7 +2,6 @@
 
 import os
 import subprocess
-import configparser
 from configparser import ConfigParser, ExtendedInterpolation
 from shutil import which
 from xdg.BaseDirectory import xdg_cache_home
@@ -25,14 +24,16 @@ for binary in binaries:
 
 path = os.path.join(xdg_cache_home, "flatpak-aliases")
 
-contents = [ x + "\n" for x in initial + aliases]
+contents = [x + "\n" for x in initial + aliases]
 with open(path, "w+") as f:
     f.writelines(contents)
 
-print("""Add
+print(
+    """Add
 
 if [ -f "${XDG_CACHE_HOME}"/flatpak-aliases ] && ! [ "$HOSTNAME" == "toolbox" ] && [[ -z "${FLATPAK_ID}" ]]; then
     . "${XDG_CACHE_HOME}"/flatpak-aliases
 fi
 
-to your ~/.bashrc file.""")
+to your ~/.bashrc file."""
+)

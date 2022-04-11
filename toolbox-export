@@ -163,7 +163,7 @@ def copy_mime(app: str):
             )
 
 
-def copy_desktop_file(app: str):
+def copy_desktop_file(app: str, container: str | None) -> None:
     resource = 'applications'
     paths = filter(
         lambda d: d.startswith('/usr'),
@@ -183,8 +183,15 @@ def copy_desktop_file(app: str):
         exec_field = desktop_file.getExec()
         tryexec_field = desktop_file.getTryExec()
 
+        container_arg = ''
+        if container:
+            container_arg = f'--container {container}'
+
+        toolbox_cmds = ['toolbox', 'run', container_arg, exec_field]
+        toolbox_cmd = ' '.join(filter(None, toolbox_cmds))
+
         if exec_field:
-            desktop_file.set('Exec', 'toolbox run ' + exec_field)
+            desktop_file.set('Exec', toolbox_cmd)
         if tryexec_field:
             desktop_file.set('TryExec', 'toolbox')
 
@@ -270,6 +277,12 @@ def main():
         action='store_true',
         help='list desktop files inside the toolbox',
     )
+    parser.add_argument(
+        '-c',
+        '--container',
+        type=str,
+        help='name of the toolbox container',
+    )
     opts = parser.parse_args()
 
     if opts.list:
@@ -283,7 +296,7 @@ def main():
 
     sizes = [16, 24, 32, 48, 64, 96, 128, 256, 512, 'scalable']
     app = opts.application
-    copy_desktop_file(app)
+    copy_desktop_file(app, opts.container)
     app_icon = get_icon_name(app)
     for size in sizes:
         copy_icon(app_icon, size)

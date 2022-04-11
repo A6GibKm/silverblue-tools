@@ -202,11 +202,15 @@ def copy_desktop_file(app: str, container: str | None) -> None:
         with tempfile.NamedTemporaryFile() as tmp_f:
             desktop_file.write(tmp_f.name)
             install(tmp_f.read(), new_path, resource)
-        # TODO check if this command does anything
         command = [
+            'flatpak-spawn',
+            '--host',
             'update-desktop-database',
             BaseDirectory.save_data_path(resource),
         ]
+        cmd_preview = ' '.join(command[2::])
+        print(f'Running: {cmd_preview}')
+
         try:
             subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
         except subprocess.CalledProcessError:

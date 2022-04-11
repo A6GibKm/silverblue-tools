@@ -6,11 +6,14 @@ import argparse
 import json
 import hashlib
 import os
+import ruamel.yaml
 import shutil
+import sys
 import tempfile
 import urllib.request
 
 from collections import OrderedDict
+from ruamel.yaml.representer import RoundTripRepresenter
 
 
 def download(url: str, tempdir: str) -> str:
@@ -35,6 +38,12 @@ def get_file_hash(filename: str) -> str:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('url')
+    parser.add_argument(
+        '-y',
+        '--yaml',
+        action='store_true',
+        help='generate in yaml format',
+    )
     opts = parser.parse_args()
     url = opts.url
 
@@ -62,7 +71,23 @@ def main() -> None:
             ('sources', [source]),
         ]
     )
-    print(json.dumps(module, indent=4))
+    if opts.yaml:
+        print_yaml(module)
+    else:
+        print(json.dumps(module, indent=4))
+
+
+def print_yaml(module: OrderedDict) -> None:
+    class MyRepresenter(RoundTripRepresenter):
+        pass
+
+    ruamel.yaml.add_representer(OrderedDict, MyRepresenter.represent_dict,
+                                representer=MyRepresenter)
+
+    yaml = ruamel.yaml.YAML()
+    yaml.Representer = MyRepresenter
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.dump(module, sys.stdout)
 
 
 if __name__ == '__main__':

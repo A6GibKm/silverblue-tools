@@ -1,2 +1,3 @@
 pyxdg
 pillow
+ruamel.yaml

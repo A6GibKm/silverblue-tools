@@ -19,7 +19,7 @@ for binary in binaries:
         # This might be overkill
         parser = ConfigParser(interpolation=ExtendedInterpolation())
         parser.read_string(proc.stdout.decode("utf-8"))
-        cmd = os.path.basename(parser["Application"]["command"])
+        cmd = os.path.basename(parser["Application"]["command"]).replace("-wrapper", "")
         if not which(cmd):
             aliases.append("alias {}={}".format(cmd, appid))
     except:

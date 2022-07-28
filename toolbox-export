@@ -217,8 +217,38 @@ def copy_desktop_file(app: str, container: str | None) -> None:
             print('Failed to run', ' '.join(command))
 
 
+def get_desktop_file(app: str) -> str:
+    resource = 'applications'
+    paths = filter(
+        lambda d: d.startswith('/usr'),
+        xdg.BaseDirectory.load_data_paths(resource),
+    )
+    results: list[str] = []
+    for path in paths:
+        for filename in os.listdir(path):
+            if not filename.endswith('.desktop'):
+                continue
+
+            desktop_file_path = os.path.join(path, filename)
+            desktop_file = DesktopEntry(desktop_file_path)
+            if desktop_file.getExec() == app or os.path.basename(desktop_file_path) == app + '.desktop':
+                results.append(desktop_file_path)
+
+    if len(results) == 0:
+        sys.exit(f"Could not find any desktop for {app}")
+    elif len(results) == 1:
+        return results[0]
+    else:
+        print("Found multiple desktop files:\n")
+        for res in results:
+            print(os.path.splitext(os.path.basename(res))[0])
+
+        print()
+        sys.exit("Please restart the script using the correct one")
+
+
 def get_icon_name(app: str) -> str:
-    application = app + '.desktop'
+    application = get_desktop_file(app)
     resource = 'applications'
 
     paths = filter(
@@ -272,7 +302,7 @@ def main():
 
     # if not os.path.exists('/README.md'):
     if os.environ.get('TOOLBOX_PATH') is None:
-        exit('Not inside a toolbox container')
+        sys.exit('Not inside a toolbox container')
 
     parser = argparse.ArgumentParser()
     parser.add_argument('application', help='application to export', nargs='?')

@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 from xdg.Exceptions import ParsingError
+from xdg.BaseDirectory import xdg_state_home
 
 try:
     from PIL import Image
@@ -31,6 +32,58 @@ class DesktopFile:
 # TODO separate in already installed and newly installed
 # TODO Handle /opt
 installed_paths = []
+
+
+def load_installed_paths(app):
+    path = os.path.join(
+        xdg_state_home, "silverblue-tools", "toolbox-export", "installed"
+    )
+    os.makedirs(path, exist_ok=True)
+
+    file_path = os.path.join(path, app)
+
+    if not os.path.exists(file_path):
+        with open(file_path, "x"):
+            pass
+
+    with open(file_path, "r") as installed_file:
+        for line in set(installed_file.readlines()):
+            installed_paths.append(line)
+
+
+def write_installed_paths(app):
+    path = os.path.join(
+        xdg_state_home, "silverblue-tools", "toolbox-export", "installed"
+    )
+    file_path = os.path.join(path, app)
+
+    with open(file_path, "r+") as installed_file:
+        # FIXME This is very uggly.
+        installed_file.seek(0)
+        lines = [line.strip() for line in installed_paths if line.strip()]
+        lines = list(set(lines))
+        installed_file.write("\n".join(lines))
+        installed_file.truncate()
+
+
+def uninstall_files(app):
+    path = os.path.join(
+        xdg_state_home, "silverblue-tools", "toolbox-export", "installed"
+    )
+    file_path = os.path.join(path, app)
+
+    uninstalled = []
+    for path in installed_paths:
+        if (path := path.strip()) and path not in uninstalled:
+            if not os.path.exists(path):
+                continue
+
+            os.remove(path)
+            uninstalled.append(path)
+            print(f"Deleted {path}")
+
+    with open(file_path, "w"):
+        pass
 
 
 def already_installed(new_data: bytes, resource: str) -> bool:
@@ -63,6 +116,7 @@ def install(new_data: bytes, path: str, resource: str):
 
     if path in installed_paths:
         return
+
     if already_installed(new_data, resource):
         print(message_n)
         installed_paths.append(path)
@@ -366,6 +420,11 @@ def main():
         help="list desktop files inside the toolbox",
     )
     parser.add_argument(
+        "--uninstall",
+        action="store_true",
+        help="uninstall related files",
+    )
+    parser.add_argument(
         "-c",
         "--container",
         type=str,
@@ -381,6 +440,13 @@ def main():
         sys.exit("Specify an application. See --help for additional information")
 
     app = opts.application
+
+    load_installed_paths(app)
+
+    if opts.uninstall:
+        uninstall_files(app)
+        sys.exit()
+
     try:
         desktop_files = get_desktop_file(app)
     except Exception as err:
@@ -393,6 +459,8 @@ def main():
 
         update_desktop_database()
         update_gtk_icon_cache()
+
+        write_installed_paths(app)
 
 
 if __name__ == "__main__":

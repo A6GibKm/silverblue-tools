@@ -309,6 +309,8 @@ def program_exists(name):
 
 
 def update_gtk_icon_cache():
+    command = None # adding the variable to local scope
+
     paths = filter(
         lambda d: (not d.startswith("/usr") and "flatpak" not in d),
         xdg.BaseDirectory.load_data_paths("icons/hicolor"),

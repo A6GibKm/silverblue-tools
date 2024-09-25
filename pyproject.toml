@@ -1,0 +1,16 @@
+[project]
+name = "silverblue-tools"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "pyxdg",
+  "pillow",
+  "ruamel.yaml",
+]
+
+[project.scripts]
+flatpak-curl = "flatpak_curl:main"
+flatpak-alias = "flatpak_alias:main"
+toolbox-export = "toolbox_export:main"

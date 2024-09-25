@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 __license__ = "MIT"
 
 import tempfile

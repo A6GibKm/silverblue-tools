@@ -2,16 +2,21 @@ import os
 import subprocess
 from configparser import ConfigParser, ExtendedInterpolation
 from shutil import which
-from xdg.BaseDirectory import xdg_cache_home
+from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
 
 
 def main():
-    binaries = os.listdir("/var/lib/flatpak/exports/bin/")
+    user_binaries = os.listdir("/var/lib/flatpak/exports/bin/")
+    system_binaries = os.listdir(f"{xdg_data_home}/flatpak/exports/bin/")
+    binaries = user_binaries + system_binaries
     command = ["flatpak", "info", "-m"]
 
-    initial = ["PATH=$PATH:/var/lib/flatpak/exports/bin"]
+    initial = [
+        "PATH=$PATH:/var/lib/flatpak/exports/bin:${XDG_DATA_HOME}/flatpak/exports/bin"
+    ]
     aliases = []
 
+    print("Creating alias for:")
     for binary in binaries:
         appid = os.path.basename(binary)
         try:
@@ -24,6 +29,8 @@ def main():
             )
             if not which(cmd):
                 aliases.append("alias {}={}".format(cmd, appid))
+                print(f"{cmd} for {appid}")
+
         except Exception as e:
             print(f"skiping: {appid}: {e}")
 

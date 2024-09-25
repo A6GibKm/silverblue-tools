@@ -6,8 +6,8 @@ import argparse
 import subprocess
 import sys
 
-from xdg.Exceptions import ParsingError
 from xdg.BaseDirectory import xdg_state_home
+from subprocess import Popen, PIPE
 
 try:
     from PIL import Image
@@ -297,9 +297,6 @@ def update_desktop_database():
         print("Failed to run", " ".join(command))
 
 
-from subprocess import Popen, PIPE
-
-
 def program_exists(name):
     p = Popen(["/usr/bin/which", name], stdout=PIPE, stderr=PIPE)
     p.communicate()
@@ -409,8 +406,8 @@ def list_desktop_files():
                 for f in os.listdir(desktop_dir)
                 if os.path.splitext(f)[1] == ".desktop"
             ]
-            for l in L:
-                print(l)
+            for line in L:
+                print(line)
 
 
 def main():
@@ -455,7 +452,7 @@ def main():
 
     try:
         desktop_files = get_desktop_file(app)
-    except Exception as err:
+    except Exception:
         print("could not parse desktops file: {err}")
     else:
         copy_desktop_files(app, opts.container, desktop_files)

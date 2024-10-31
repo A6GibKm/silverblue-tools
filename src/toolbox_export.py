@@ -452,8 +452,8 @@ def main():
 
     try:
         desktop_files = get_desktop_file(app)
-    except Exception:
-        print("could not parse desktops file: {err}")
+    except Exception as err:
+        print(f"could not parse desktops file: {err}")
     else:
         copy_desktop_files(app, opts.container, desktop_files)
         copy_icons(desktop_files)
